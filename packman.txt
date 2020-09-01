@@ -1,0 +1,648 @@
+#include <iostream>
+#include <string>
+#include <stdlib.h>
+#include <time.h>
+#include <conio.h>
+#include <windows.h>
+#include <fstream>
+#include <sstream>
+using namespace std;
+
+//TODO
+/*
+Dodac ustawienia w menu zeby uzytkownik mogl wlaczyc lub wylaczyc wyswietlanie polozenia gracza i przeciwnikow +
+Dodanie zgodnosci zapisow - ilosc przeciwnikow z save musi byc taka sama jaka teraz jest ustawiona. ( out of array)
+Zmienic koniecGry na odpowiednie wartosci 1 zwyciestwo 2 smierc itp...+
+
+
+
+
+
+
+
+
+
+
+
+
+
+*/
+/* PackMan */
+
+// przypisuje wartosc do tekstu - Nie mozna tego uzywac jak zmiennej nie mozna tego modyfikowac w kodzie to jest taka stala na caly czas trwania programu
+#define SZEROKOSC 50
+#define WYSOKOSC 20
+#define ZNAKPRZECIWNIKA 'D'
+#define ILOSC_PUNTKOW 5
+#define ILOSC_PRZECIWNIKOW 3
+
+//struktury
+struct przeciwnik
+	{
+		int X;
+		int Y;	
+		char znak;
+	};
+	
+//zmienne globalne
+char mapa[SZEROKOSC][WYSOKOSC];
+int wysokosc=WYSOKOSC;
+int szerokosc=SZEROKOSC;
+int pozycjaGraczaX;
+int pozycjaGraczaY;
+int licznikPunktow=0;
+bool wyswietlInformacjePolozenie=false;
+przeciwnik lista_przeciwnikow[ILOSC_PRZECIWNIKOW];
+	
+
+//funkcje
+
+//przypisanie poczatkowych wartosci do tablicy z pustymi polami oraz * jako koniec mapy.
+void stworzMape();
+//wyswietlenie mapy jako tablicy zakow.
+void wyswietlMape();
+//Tworzenie punktow
+void stworzPunkty();
+//tworzy X jako gracza na mapie w losowym miescu
+void stworzGracza();
+//ustawia do zmiennych pozycjaGracza X i Y wartosci indexu tablicy gdzie znajduje sie aktualnie X - gracz
+void sprawdzPozycjeGracza();
+//cout X i Y index pozycji Gracza
+void wyswietlPozycjeGracza();
+//Sprawdzenie czy gracze nie probuje przejsc przez koniec mapy, ustawia na podstawie kliknietego przycisku nowa pozycje gracza
+void nowaPozycjaGracza(int x, int y);
+//przesyla do funkcji nowaPozycjaGracza wartosc kliknietego przycisku z zadaniem ruchu w danym kierunku
+void ruch();
+//wyswietla wartos licznikPuntkow
+void wyswietlLicznikPunktow();
+//warunkiem koncy gry jest zebranie wszsytkich punktow
+
+void koniecGry(bool smierc);
+//zapisuje cala tablice do pliku txt o nazwie save
+void zapis();
+//funckcja wysiwetlajaca menu, zwraca wartosc wyboru 1- rozpoczniej 2-wczytaj 3-zamknij
+int menu(string kolor);
+//wczytanie gry z pliku save.txt - wczytanie gotowej tablicy do gry wraz z jej wszsytkimi aktualnymi polozeniami elementow
+void wczytaj();
+//tworzenie martwych pol - jak gracz na nie wejdzie to zginie
+void stworzPrzeciwnika();
+//funkcja zmieniajaca kolor czcionki konsoli w zaleznosci od podanego parametru
+void zmianaKoloru(string x);
+//funkcja przemieszczajaco przeciwnikow losow na obszarze mapy po ruchu gracza
+void ruchPrzeciwnika();
+//funkcja wypisujaca pozycje przeciwnikow z tablicy structur przeciwnik
+void wyswietlPozycjePrzeciwnikow();
+//funkcja wczytujaca przeciwnikow do listy z pliku txt
+void wczytaniePrzeciwnikowDoListy();
+//funkcja wyswietlajaca ustawienia w menu
+void ustawienia();
+
+/*	Kolory funkcji zmianaKoloru
+"NIEBIESKI"
+"ZIELONY"
+"TURKUSOWY"
+"CZERWONY"
+"ROZOWY"
+"ZOLTY"
+"BIALY"
+*/
+int main()
+{
+	srand (time(NULL));
+	
+	
+	Wroc:
+	zmianaKoloru("BIALY");
+		switch(menu("NIEBIESKI"))
+		{
+			//Nowa gra
+			case 1:
+				{
+					system("ClS");
+					
+					stworzMape();
+					stworzPrzeciwnika();
+					stworzPunkty();
+					
+					stworzGracza();
+					
+					break;
+				}
+			//Wczytaj gre
+			case 2:
+				{
+					wczytaj();
+					wczytaniePrzeciwnikowDoListy();
+					break;
+				}
+			//ustawienia
+			case 3:
+				{
+					ustawienia();
+					goto Wroc;
+					break;
+				}
+			//Zamknij program
+			case 4:
+				{
+					return 0;
+					break;
+				}
+		}
+						
+	
+	
+	wyswietlMape();
+	
+	sprawdzPozycjeGracza();
+	
+	wyswietlPozycjeGracza();
+	
+	wyswietlLicznikPunktow();
+	wyswietlPozycjePrzeciwnikow();
+	cout<<endl;
+	
+	
+	
+	while(1)
+	{
+		koniecGry(false);
+		ruch();
+		ruchPrzeciwnika();
+		wyswietlPozycjePrzeciwnikow();
+	}
+	
+	
+	return 0;
+	
+}
+void stworzMape()
+{
+	//wczytywanie
+	for(int i=0; i<szerokosc; i++)
+	{
+		mapa[i][0]='*';
+		mapa[i][WYSOKOSC-1]='*';
+	}
+	
+	for(int i=0; i<wysokosc; i++)
+	{
+		mapa[0][i]='*';
+		mapa[SZEROKOSC-1][i]='*';
+	}
+	
+	for(int i=1;i<szerokosc-1;i++)
+	{
+		for(int j=1;j<wysokosc-1;j++)
+		{
+			mapa[i][j]=' ';
+		}
+	}
+}
+void wyswietlMape()
+{
+	//wyswietlanie
+	int rodzajZnaku=0;
+		for(int i=0;i<wysokosc;i++)
+		{
+			for(int j=0;j<szerokosc;j++)
+			{
+				rodzajZnaku=mapa[j][i];
+				
+				switch(rodzajZnaku)
+				{
+					case 42 :
+					{
+						mapa[j][i]=='*';
+						zmianaKoloru("TURKUSOWY");
+						break;
+					}
+					case 88 :
+					{
+						mapa[j][i]=='X';
+						zmianaKoloru("ZIELONY");
+						break;
+					}
+					case 67 :
+					{
+						mapa[j][i]=='C';
+						zmianaKoloru("ZOLTY");
+						break;
+					}
+					case 68 :
+					{
+						mapa[j][i]=='D';
+						zmianaKoloru("CZERWONY");
+						break;
+					}
+				}
+				
+				cout<<mapa[j][i];
+				zmianaKoloru("BIALY");
+			}
+			
+			cout<<endl;
+		}
+}
+void stworzGracza()
+{
+	int X = rand() % (SZEROKOSC-2) + 1;   // X do 1 do SZEROKOSC-2 //unikamy zeby gracz nie pojawil sie na sciankach mapy
+	int Y = rand() % (WYSOKOSC-2) + 1;        // Y od 1 do WYSOKOSC-2
+	
+	while(mapa[X][Y]!=' ')
+	{
+	 	X = rand() % (SZEROKOSC-2) + 1;
+	 	Y = rand() % (WYSOKOSC-2) + 1;        
+	}
+	mapa[X][Y]='X';
+}
+void sprawdzPozycjeGracza()
+{
+	for(int i = 0; i < szerokosc; i++)
+	{
+		
+		for(int j = 0; j < wysokosc; j++ )
+		{
+			if(mapa[i][j]=='X')
+			{
+				 pozycjaGraczaX=i;
+				 pozycjaGraczaY=j;
+				 return;
+			}
+		}
+	}
+}
+void wyswietlPozycjeGracza()
+{
+		if(wyswietlInformacjePolozenie)
+		{
+			cout<<"X: "<<pozycjaGraczaX<<"   Y: "<<pozycjaGraczaY<<endl;
+		}
+		
+}
+void nowaPozycjaGracza(int x,int y)
+{
+	//sprawdzenie czy gracz nie chce wyjsc na koniec mapy na pole z *
+	if((pozycjaGraczaX==SZEROKOSC-2 && x==1) || (pozycjaGraczaX==1 && x==-1 ) || (pozycjaGraczaY==1 && y==-1) || (pozycjaGraczaY==WYSOKOSC-2 && y==1))
+	{
+		return;
+	}
+	
+	//usunicie gracza ze starej pozycji
+	mapa[pozycjaGraczaX][pozycjaGraczaY]=' ';
+	
+	pozycjaGraczaX+=x;
+	pozycjaGraczaY+=y;
+	//sprawdzenie czy gracz wszedl na punkt jak tak dodaj punkt do licznikaPunktow
+	if(mapa[pozycjaGraczaX][pozycjaGraczaY]=='C')
+	{
+		licznikPunktow++;
+	}
+	////sprawdzenie czy gracz wszedl na martwe pole jak tak to zakoncz gre
+	if(mapa[pozycjaGraczaX][pozycjaGraczaY]=='D')
+	{
+		exit(0);
+	}
+	mapa[pozycjaGraczaX][pozycjaGraczaY]='X';
+}
+void ruch()
+{
+	char wcisnietyPrzycisk;
+	wcisnietyPrzycisk = getch();
+	
+	int kodPrzycisku = wcisnietyPrzycisk;
+	
+	switch(kodPrzycisku)
+	{
+		case 119:
+			{
+				nowaPozycjaGracza( 0,-1);
+				break;
+			}
+			case 115:
+				{
+					nowaPozycjaGracza( 0,1);
+					break;
+				}
+				case 97:
+					{
+						nowaPozycjaGracza( -1,0);
+						break;
+					}
+					case 100:
+						{
+								nowaPozycjaGracza( 1,0);
+								break;
+						}
+						case 109:
+							{
+								zapis();
+								break;
+							}
+							case 120:
+								{
+									exit(0);
+									break;
+								}
+	}
+	
+		system("cls");
+		wyswietlMape();
+		wyswietlPozycjeGracza();
+		wyswietlLicznikPunktow();
+}
+void stworzPunkty()
+{
+	int X;
+	int Y;
+	for(int i=0; i<ILOSC_PUNTKOW; i++)
+	{
+		X=rand() % (SZEROKOSC - 2) + 1;
+		Y=rand() % (WYSOKOSC - 2) + 1;
+		if(mapa[X][Y]==' ')
+		{
+			mapa[X][Y] = 'C';
+		}
+		
+	}
+}
+void wyswietlLicznikPunktow()
+{
+	cout<<"Liczba punktow: "<<licznikPunktow<<endl;
+}
+void koniecGry(bool smierc)
+{
+	bool wszsytkiePunkty=true;
+	
+	for(int i=0; i<WYSOKOSC; i++)
+	{
+		for(int j=0; j<SZEROKOSC; j++)
+		{
+			if(mapa[j][i]=='C')
+			{
+				wszsytkiePunkty=false;
+			}
+		}
+	}
+	if(smierc==true)
+	{
+		system("cls");
+		cout<<"Nie zyjesz"<<endl;
+		system("pause");
+		exit(1);
+	}
+	else if(wszsytkiePunkty)
+	{
+		system("cls");
+		cout<<"Wygrales"<<endl;
+		system("pause");
+		exit(1);
+		
+	}
+	else
+	{
+		return;
+	}
+	
+	
+}
+void zapis()
+{
+	ofstream plik("save.txt",ios::out);
+			plik<<SZEROKOSC<<"\n"<<WYSOKOSC<<"\n";
+			for(int i=0;i<WYSOKOSC;i++)
+			{
+				for(int j=0;j<SZEROKOSC;j++)
+				{
+					plik<<mapa[j][i];
+				}
+				plik<<endl;
+			}
+			plik.close();
+}
+int menu(string kolor)
+{
+	int menuWybor;
+		zmianaKoloru(kolor);
+		cout<<"Witaj w grze packman"<<endl<<endl;
+		cout<<"Info\nW - gora\nS - dol\nA - lewo\nD - prawo\nM - zapisz gre\nx - zamknij gre\n\n";
+		cout<<"1. Rozpocznij nowa gre"<<endl;
+		cout<<"2. Wczytaj gre"<<endl;
+		cout<<"3. Ustawienia"<<endl;
+		cout<<"4. Zamknij program"<<endl;
+		
+		
+		cin>>menuWybor;
+		
+		//sprawdzenie czy uzytkownik wprowadzil niepoprawna liczbe czy text
+		while(cin.get()!='\n' || menuWybor<1 || menuWybor>4)
+		{
+			cin.clear();
+			cin.ignore(1000,'\n');
+			cout<<"Popraw swoj wybor"<<endl;
+			cin>>menuWybor;
+		}
+		zmianaKoloru("BIALY");
+		return menuWybor;
+}
+void wczytaj()
+{
+	string linia;
+					
+					ifstream plik("save.txt", ios::in);
+					int szer,wys;
+					int j=0;
+					getline(plik,linia);
+					istringstream(linia)>>szer;
+					getline(plik,linia);
+					istringstream(linia)>>wys;
+					
+					if(SZEROKOSC==szer && WYSOKOSC==wys)
+					{
+						while (getline(plik, linia)) 
+						{
+							for(int i=0;i<SZEROKOSC;i++)
+							{
+								mapa[i][j]=linia[i];
+							}
+							j++;
+						}
+						system("CLS");
+					}
+					else
+					{
+						cout<<"Nie mozna wczytaj zapisu. Wymiary mapy sie nie zgadzaja"<<endl; 
+						system("pause");
+						exit(0);
+					}
+					
+}
+void stworzPrzeciwnika()
+{
+	int X;
+	int Y;
+	for(int i=0; i<ILOSC_PRZECIWNIKOW; i++)
+	{
+		X=rand() % (SZEROKOSC - 2) + 1;
+		Y=rand() % (WYSOKOSC - 2) + 1;
+		if(mapa[X][Y]==' ')
+		{
+			lista_przeciwnikow[i]=(przeciwnik){X,Y,ZNAKPRZECIWNIKA};
+			mapa[X][Y] = 'D';
+		}
+		
+	}
+}
+void zmianaKoloru(string x)
+{
+	int y=0;
+
+	HANDLE parametryKonsoli;
+    parametryKonsoli = GetStdHandle( STD_OUTPUT_HANDLE );
+    
+    if(x=="NIEBIESKI")
+    {
+    	y=9;
+	}
+	if(x=="ZIELONY")
+	{
+		y=10;
+	}
+	if(x=="TURKUSOWY")
+	{
+		y=11;
+	}
+	if(x=="CZERWONY")
+	{
+		y=12;
+	}
+	if(x=="ROZOWY")
+	{
+		y=13;
+	}
+	if(x=="ZOLTY")
+	{
+		y=14;
+	}
+	if(x=="BIALY")
+	{
+		y=15;
+	}
+	SetConsoleTextAttribute( parametryKonsoli, y );
+}
+void ruchPrzeciwnika()
+{
+	int przeciwnik_X=rand() % 3-1;
+	int przeciwnik_Y;
+	 
+	 for(int i=0; i<ILOSC_PRZECIWNIKOW;i++)
+	 {
+	 	if(przeciwnik_X==0)
+		{
+			przeciwnik_Y=rand() % 3-1;
+			while(przeciwnik_Y==0)
+			{ 
+				przeciwnik_Y=rand() % 3-1;
+			}
+		}	
+		else
+		{
+			przeciwnik_Y=0;
+		}
+			if(!((lista_przeciwnikow[i].X==SZEROKOSC-2 && przeciwnik_X==1) || (lista_przeciwnikow[i].X==1 && przeciwnik_X==-1 ) || (lista_przeciwnikow[i].Y==1 && przeciwnik_Y==-1) || (lista_przeciwnikow[i].Y==WYSOKOSC-2 && przeciwnik_Y==1)))
+			{
+				//usuniecie starego znaczka przeiwnika przed wykonanie ruchu
+				mapa[lista_przeciwnikow[i].X][lista_przeciwnikow[i].Y]=' ';
+				//aktualizacja polozenia przeciwnika
+				lista_przeciwnikow[i].X+=przeciwnik_X;
+				lista_przeciwnikow[i].Y+=przeciwnik_Y;
+				//sprawdzenie czy przeciwnik nie wszedl w gracza
+				if(mapa[lista_przeciwnikow[i].X][lista_przeciwnikow[i].Y]=='X')
+				{
+					system("cls");
+					cout<<"Przegrales";
+					koniecGry(true);
+					exit(0);
+				}
+				//wprowadzenie nowego znaczka przeciwnika po wykonaniu ruchu
+				mapa[lista_przeciwnikow[i].X][lista_przeciwnikow[i].Y]='D';
+			}
+	 }
+}
+void wyswietlPozycjePrzeciwnikow()
+{
+	//sprawdzenie czy w ustawieniach chcemy informacje o polzeniach
+	if(wyswietlInformacjePolozenie)
+	{
+		cout<<"Przeciwnicy"<<endl;
+		for(int i=0;i<ILOSC_PRZECIWNIKOW;i++)
+		{
+			//wyswietlenie polozenia przeciwnikow
+			cout<<"X: "<<lista_przeciwnikow[i].X<<endl<<"Y: "<<lista_przeciwnikow[i].Y<<endl<<endl;
+		}
+	}
+	
+}
+void wczytaniePrzeciwnikowDoListy()
+{
+	//zmienna pomocnicza (informacje o aktualnie dodawanym przeciwniku od 0 do ilosci przeciwnikow ktore zostana odnalezione)
+	int licznik=0;
+	//przeszukanie mapy
+	for(int i = 0; i<WYSOKOSC;i++)
+	{
+		for(int j=0; j<SZEROKOSC;j++)
+		{
+			//stworzenie tymczasowego przeciwnika jezeli zostanie taki znaleziony
+			if(mapa[j][i]=='D')
+			{
+				//utworzenie przeciwnika i przypisanie mu polozenia takiego jak na mapie.
+				przeciwnik tymczasowy;
+				tymczasowy.znak=ZNAKPRZECIWNIKA;	//define ZNAKPRZECIWNIKA - 'D'
+				tymczasowy.X=j;
+				tymczasowy.Y=i;
+				//wprowadzenie przeciwnika do tablicy o indeksie licznika od 0 do ilosci znalezionych przeciwnikow
+				lista_przeciwnikow[licznik]=tymczasowy;
+				//zwiekszenie licznika
+				licznik++;
+			}
+		}
+	}
+}
+void ustawienia()
+{
+	int wybor;
+	while(true)
+	{
+		system("cls");
+		cout<<"************"<<endl;
+		cout<<"*Ustawienia*"<<endl;
+		cout<<"************"<<endl<<endl;
+		if(!wyswietlInformacjePolozenie)
+		{
+			cout<<"1. Wlacz pokazyanie polozenia (wylaczona)"<<endl;
+		}
+		else
+		{
+			cout<<"1. Wylacz pokazyanie polozenia (wlaczona)"<<endl;
+		}
+		cout<<"2. Wroc"<<endl;
+		
+			cin>>wybor;
+		
+		switch(wybor)
+		{
+			case 1:
+				{
+					wyswietlInformacjePolozenie=!wyswietlInformacjePolozenie;
+					break;
+				}
+			case 2:
+				{
+					system("cls");
+					return;
+					break;
+				}
+		}
+	}
+	
+}
